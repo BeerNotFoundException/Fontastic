@@ -1,7 +1,5 @@
 package hu.beernotfoundexception.fontastic.comm;
 
-import android.util.Log;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.InputStreamReader;
@@ -10,28 +8,34 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 
-public class TcpClient {
+import hu.beernotfoundexception.fontastic.util.Logger;
 
-    private static final int SERVERPORT = 9999;
-    public static String SERVERIP = "192.168.0.105";
-    private OnMessageReceived mMessageListener = null;
+public class TcpClient {
+    public static final String TAG = TcpClient.class.getSimpleName();
+
+    private final String remoteIp;
+    private final int remotePort;
+
+    private final OnMessageReceivedListener mMessageListener;
     private boolean mRun = false;
 
     private PrintWriter out = null;
     private BufferedReader in = null;
 
-    /**
-     * Konstruktor. OnMessagedReceived figyeli a bejövő üzeneteket
-     */
-    public TcpClient(final OnMessageReceived listener) {
-        mMessageListener = listener;
+    public TcpClient(String remoteIp, int remotePort, OnMessageReceivedListener messageListener) {
+        this.remoteIp = remoteIp;
+        this.remotePort = remotePort;
+        mMessageListener = messageListener;
     }
 
-    /**
-     * A beírt üzenetet elküldi
-     *
-     * @param message kliens által küldött üzenet
-     */
+    public String getRemoteIp() {
+        return remoteIp;
+    }
+
+    public int getRemotePort() {
+        return remotePort;
+    }
+
     public void sendMessage(String message) {
         if (out != null && !out.checkError()) {
             System.out.println("message: " + message);
@@ -49,42 +53,33 @@ public class TcpClient {
         mRun = true;
 
         try {
-            InetAddress serverAddr = InetAddress.getByName(SERVERIP);
+            InetAddress serverAddr = InetAddress.getByName(remoteIp);
 
-            Log.e("TCPClient", "Socket: Csatlakozás...");
+            Logger.i(TAG, "Connecting...");
 
-            try (Socket socket = new Socket(serverAddr, SERVERPORT)) {
+            try (Socket socket = new Socket(serverAddr, remotePort)) {
 
-                //üzenet küldés
                 out = new PrintWriter(new BufferedWriter(
                         new OutputStreamWriter(socket.getOutputStream())), true);
 
-                Log.e("TCPClient", "Socket: Elküldve.");
-
-                //bejövő fogadása
                 in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-                //a kliens figyeli a bejövő üzeneteket
+                Logger.i(TAG, "Connected!");
+
                 while (mRun) {
                     String serverMessage = in.readLine();
 
                     if (serverMessage != null && mMessageListener != null) {
-                        //hívjuk a messageReceived metódust
                         mMessageListener.messageReceived(serverMessage);
-                        Log.e("SZERVER VÁLASZ", "Socket: Bejövő: '" + serverMessage + "'");
+                        Logger.i(TAG, "Incoming: '" + serverMessage + "'");
                     }
                 }
             } catch (Exception e) {
-                Log.e("TCPError", "Socket: Error ", e);
+                Logger.e(TAG, "Error!", e);
                 e.printStackTrace();
             }
-            //lezárjuk a socketet. ezután ebben a példányban már nem lehet újra csatlakozni
-
-
         } catch (Exception e) {
-
-            Log.e("TCP SI Error", "SI: Error", e);
-
+            Logger.e(TAG, "SI: Error", e);
         }
 
     }
@@ -92,7 +87,27 @@ public class TcpClient {
     //Interfész.
     //A messageReceived(String message) metódust implementálni kell
     //az asynckTasknál a doInBackground részben.
-    public interface OnMessageReceived {
+    public interface OnMessageReceivedListener {
         void messageReceived(String message);
+    }
+
+    public static class Builder {
+        private String remoteIp;
+        private int remotePort;
+        private OnMessageReceivedListener messageListener;
+
+        public Builder(String ip, int port) {
+            this.remoteIp = ip;
+            this.remotePort = port;
+        }
+
+        public Builder setMessageListener(OnMessageReceivedListener listener) {
+            this.messageListener = listener;
+            return this;
+        }
+
+        public TcpClient build() {
+            return new TcpClient(remoteIp, remotePort, messageListener);
+        }
     }
 }
