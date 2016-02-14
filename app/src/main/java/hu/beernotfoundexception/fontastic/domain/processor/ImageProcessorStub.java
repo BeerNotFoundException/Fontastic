@@ -12,7 +12,6 @@ public class ImageProcessorStub implements ImageProcessor {
     @Override
     public void processImage(@NonNull Bitmap image, final @NonNull ImageProcessingListener listener) {
         listener.onStart();
-            image.recycle();
             listener.onResult(Fonts.getRandomAcceptedFont());
     }
 }

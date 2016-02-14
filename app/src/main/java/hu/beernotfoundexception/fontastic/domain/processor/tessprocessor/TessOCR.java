@@ -11,9 +11,9 @@ import java.util.MissingResourceException;
 public class TessOCR {
     private TessBaseAPI mTess;
 
-    public TessOCR() {
+    public TessOCR(TessBaseAPI.ProgressNotifier notifier) {
         // TODO Auto-generated constructor stub
-        mTess = new TessBaseAPI();
+        mTess = new TessBaseAPI(notifier);
         String datapath = Environment.getExternalStorageDirectory() + "/tesseract/";
         String language = "eng";
         File dir = new File(datapath + "tessdata/");

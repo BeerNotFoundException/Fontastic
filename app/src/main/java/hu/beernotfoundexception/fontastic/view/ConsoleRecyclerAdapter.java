@@ -8,8 +8,6 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -18,6 +16,8 @@ import hu.beernotfoundexception.fontastic.data.ConsoleLine;
 import hu.beernotfoundexception.fontastic.view.recycler.vh.ConsoleViewHolder;
 
 public class ConsoleRecyclerAdapter extends RecyclerView.Adapter<ConsoleViewHolder> {
+
+    public static final int MAX_CONSOLE_HISTORY = 10;
 
     private final List<ConsoleLine> lines = new LinkedList<>();
 
@@ -30,6 +30,11 @@ public class ConsoleRecyclerAdapter extends RecyclerView.Adapter<ConsoleViewHold
 
     public void log(Bitmap bitmap) {
         addConsoleLine(0, new ConsoleLine(ConsoleLine.TYPE_IMAGE, bitmap));
+    }
+
+    public void trimConsole() {
+        while (MAX_CONSOLE_HISTORY < lines.size())
+            remove(lines.size()-1);
     }
 
     @Override
@@ -63,73 +68,19 @@ public class ConsoleRecyclerAdapter extends RecyclerView.Adapter<ConsoleViewHold
     }
 
     public void clear() {
-        animateTo(Collections.<ConsoleLine>emptyList());
+        lines.clear();
+        notifyDataSetChanged();
     }
 
-    public synchronized void removeConsoleLine(ConsoleLine consoleLine) {
-        int position = lines.indexOf(consoleLine);
+    public void remove(int position) {
         lines.remove(position);
-        if (position != 0) notifyDataSetChanged();
-        else notifyItemRemoved(position);
-    }
-
-    public void removeConsoleLine(Iterator iter, int pos) {
-        iter.remove();
-        notifyItemRemoved(pos);
-    }
-
-    public void addConsoleLine(ConsoleLine consoleLine) {
-        lines.add(consoleLine);
-        int position = lines.indexOf(consoleLine);
-        notifyItemInserted(position);
+        notifyItemRemoved(position);
     }
 
     public void addConsoleLine(int position, ConsoleLine consoleLine) {
         lines.add(position, consoleLine);
         notifyItemInserted(position);
-    }
-
-    public void moveTagCategories(int fromPosition, int toPosition) {
-        final ConsoleLine consoleLine = lines.remove(fromPosition);
-        lines.add(toPosition, consoleLine);
-        notifyItemMoved(fromPosition, toPosition);
-    }
-
-    public void animateTo(List<ConsoleLine> tags) {
-        applyAndAnimateRemovals(tags);
-        applyAndAnimateAdditions(tags);
-        applyAndAnimateMovedItems(tags);
-    }
-
-    private void applyAndAnimateRemovals(List<ConsoleLine> tags) {
-        synchronized (ConsoleRecyclerAdapter.class) {
-            Iterator<ConsoleLine> iter = lines.iterator();
-
-            while (iter.hasNext()) {
-                ConsoleLine consoleLine = iter.next();
-                if (!tags.contains(consoleLine)) {
-                    removeConsoleLine(iter, lines.indexOf(consoleLine));
-                }
-            }
-        }
-    }
-
-    private void applyAndAnimateAdditions(List<ConsoleLine> tags) {
-        for (ConsoleLine consoleLine :
-                tags) {
-            if (!lines.contains(consoleLine)) addConsoleLine(consoleLine);
-        }
-    }
-
-    private void applyAndAnimateMovedItems(List<ConsoleLine> tags) {
-        for (ConsoleLine consoleLine :
-                tags) {
-            int fromPosition = lines.indexOf(consoleLine);
-            int toPosition = tags.indexOf(consoleLine);
-            if (fromPosition >= 0 && fromPosition != toPosition) {
-                moveTagCategories(fromPosition, toPosition);
-            }
-        }
+        trimConsole();
     }
 
     public static class ViewHolderMessage extends ConsoleViewHolder {
