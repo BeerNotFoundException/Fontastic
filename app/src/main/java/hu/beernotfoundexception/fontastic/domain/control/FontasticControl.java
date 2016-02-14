@@ -2,34 +2,35 @@ package hu.beernotfoundexception.fontastic.domain.control;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
 
+import hu.beernotfoundexception.fontastic.bus.Broadcast;
+import hu.beernotfoundexception.fontastic.bus.event.ui.ProcessFinishedEvent;
+import hu.beernotfoundexception.fontastic.bus.event.ui.ProcessProgressEvent;
+import hu.beernotfoundexception.fontastic.bus.event.ui.ShowBitmapEvent;
 import hu.beernotfoundexception.fontastic.comm.TcpCommunicationClient;
-import hu.beernotfoundexception.fontastic.domain.Constants;
-import hu.beernotfoundexception.fontastic.domain.presenter.LogDisplay;
-import hu.beernotfoundexception.fontastic.domain.presenter.Presenter;
+import hu.beernotfoundexception.fontastic.domain.processor.ImageProcessor;
 import hu.beernotfoundexception.fontastic.domain.repository.Commands;
 import hu.beernotfoundexception.fontastic.domain.repository.CommunicationInterface;
 import hu.beernotfoundexception.fontastic.domain.repository.ResponseParser;
+import hu.beernotfoundexception.fontastic.util.Logger;
+
+import static hu.beernotfoundexception.fontastic.bus.event.ui.ProcessFinishedEvent.FinishMode;
+import static hu.beernotfoundexception.fontastic.bus.event.ui.ProcessProgressEvent.ProgressType.OverallProgress;
+import static hu.beernotfoundexception.fontastic.bus.event.ui.ProcessProgressEvent.ProgressType.ScanFinish;
+import static hu.beernotfoundexception.fontastic.bus.event.ui.ProcessProgressEvent.ProgressType.ScanProgress;
+import static hu.beernotfoundexception.fontastic.bus.event.ui.ProcessProgressEvent.ProgressType.ScanStart;
+import static hu.beernotfoundexception.fontastic.bus.event.ui.ProcessProgressEvent.ProgressType.Start;
 
 public class FontasticControl implements ControlInterface {
 
     public static final String TAG = FontasticControl.class.getSimpleName();
-
-    private final Presenter presenter;
-
-    private LogDisplay logDisplay;
+    private final ImageProcessor imageProcessor;
 
     private CommunicationInterface communicationInterface;
     private int startImages = 0;
 
-    public FontasticControl(Presenter presenter) {
-        this.presenter = presenter;
-    }
-
-    @Override
-    public void setLogDisplay(LogDisplay logDisplay) {
-        this.logDisplay = logDisplay;
+    public FontasticControl(ImageProcessor imageProcessor) {
+        this.imageProcessor = imageProcessor;
     }
 
     @Override
@@ -38,23 +39,54 @@ public class FontasticControl implements ControlInterface {
     }
 
     @Override
-    public void onBitmapScanRequest(Bitmap img) {
-        log("Scan request: " + img.toString());
+    public void scanBitmap(final Bitmap img) {
+        Logger.i(TAG, "Scan request: " + img.toString());
+        imageProcessor.processImage(img, new ImageProcessor.ImageProcessingListener() {
+            @Override
+            public void onStart() {
+                Broadcast.postUi(new ProcessProgressEvent(Start,
+                        "Bitmap parsing started", 0));
+            }
+
+            @Override
+            public void onProgressUpdate(final float percent) {
+                Broadcast.postUi(new ProcessProgressEvent(
+                        ScanProgress, null, percent));
+            }
+
+            @Override
+            public void onResult(final String fontName) {
+                Broadcast.postUi(new ProcessFinishedEvent(
+                        FinishMode.Done, null, fontName));
+            }
+
+            @Override
+            public void onError(final Exception e) {
+                Broadcast.postUi(new ProcessFinishedEvent(
+                        FinishMode.Done, null, e));
+            }
+        });
     }
 
     @Override
-    public void onTestRequest(String ip, final TestProgressListener listener) {
-        log("Connecting to " + ip);
+    public void startTest(String ip) {
+        Logger.i(TAG, "Connecting to " + ip);
+
+        Broadcast.postUi(new ProcessProgressEvent(Start,
+                "TEST mode started.", 0));
 
         this.setCommunicationInterface(new TcpCommunicationClient(ip));
 
-        if (listener != null) {
-            listener.onStart();
-        }
-        communicationInterface.setMessageReceivedListener(
-                new CommunicationInterface.OnMessageReceivedListener() {
+        communicationInterface.setConnectionEventListener(
+                new CommunicationInterface.ConnectionEventListener() {
+
+                    private void getImage() {
+                        communicationInterface.notifyExpectByteArray();
+                        communicationInterface.sendMessage(Commands.CLIENT_REQ_NEW);
+                    }
+
                     @Override
-                    public void onMessage(String msg) {
+                    public void onMessage(final String msg) {
                         switch (ResponseParser.getResponseType(msg)) {
 
                             case SERVER_HELLO:
@@ -65,34 +97,77 @@ public class FontasticControl implements ControlInterface {
                                 break;
                             case SERVER_ID_ACK:
                                 startImages = ResponseParser.getRemainingFromMessage(msg);
-                                if (listener != null) {
-                                    listener.onProgress(0);
-                                }
+                                getImage();
+                                break;
                             case SERVER_FONT_ACK:
-                                if (listener != null) {
-                                    listener.onProgress((startImages - ResponseParser.getRemainingFromMessage(msg)) / startImages);
-                                }
+                                int imagesLeft = ResponseParser.getRemainingFromMessage(msg);
+                                Broadcast.postUi(new ProcessProgressEvent(
+                                        OverallProgress,
+                                        "Font acknowledged. Remaining: "
+                                                + imagesLeft,
+                                        (startImages - imagesLeft) / startImages));
                                 if (ResponseParser.getRemainingFromMessage(msg) > 0)
-                                    communicationInterface.setExpectingDataStream(
-                                            Constants.FILE_START,
-                                            Constants.FILE_END);
-                                communicationInterface.sendMessage(Commands.CLIENT_REQ_NEW);
+                                    getImage();
                                 break;
                             case SERVER_FONT_ACK_EOC:
-                                if (listener != null) {
-                                    listener.onFinish();
-                                }
                                 communicationInterface.stop();
+                                Broadcast.postUi(new ProcessFinishedEvent(
+                                        FinishMode.Done,
+                                        "All images processed.", null));
                                 break;
                             case SERVER_UNDEFINED:
-                                log("Unknown message: " + msg);
+                                Logger.i(TAG, "Unknown message: " + msg);
+                            case SERVER_INVALID:
+                                Broadcast.postUi(new ProcessFinishedEvent(
+                                        FinishMode.Error,
+                                        "Abnormal response from server. Stopped.",
+                                        null));
+                                cancelPending();
                                 break;
                         }
                     }
 
                     @Override
+                    public void onDestroy() {
+                        Broadcast.postUi(new ProcessFinishedEvent(FinishMode.Interrupted, null, null));
+                    }
+
+                    @Override
                     public void onByteArray(byte[] bytes) {
-                        presenter.showImage(BitmapFactory.decodeByteArray(bytes, 0, bytes.length));
+                        Bitmap bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                        imageProcessor.processImage(bmp, new ImageProcessor.ImageProcessingListener() {
+                            @Override
+                            public void onStart() {
+                                Broadcast.postUi(new ProcessProgressEvent(ScanStart, null, 0));
+                            }
+
+                            @Override
+                            public void onProgressUpdate(float percent) {
+                                Broadcast.postUi(
+                                        new ProcessProgressEvent(ScanProgress, null, percent));
+                            }
+
+                            @Override
+                            public void onResult(String fontName) {
+                                communicationInterface.sendMessage(fontName);
+                                Broadcast.postUi(new ProcessProgressEvent(ScanFinish, fontName, 0));
+                                Logger.i(TAG, "Detection ready, font is: " + fontName);
+                            }
+
+                            @Override
+                            public void onError(Exception e) {
+                                communicationInterface.sendMessage(Fonts.getRandomAcceptedFont());
+                                Logger.i(TAG, "Detection error. Condolences sent.");
+                            }
+                        });
+                        Broadcast.postUi(new ShowBitmapEvent(bmp));
+                    }
+
+                    @Override
+                    public void onException(Exception e, boolean isCritical) {
+                        Logger.e(TAG, "TESTING error", e);
+                        Broadcast.postUi(new ProcessFinishedEvent(
+                                FinishMode.Error, "Exception while testing.", e));
                     }
                 });
 
@@ -100,18 +175,14 @@ public class FontasticControl implements ControlInterface {
     }
 
     @Override
-    public void cancelTest() {
+    public void cancelPending() {
         if (communicationInterface != null) {
-            log("Stopping...");
+            Logger.i(TAG, "Stopping...");
             communicationInterface.stop();
-            log("Stopped.");
+            Logger.i(TAG, "Stopped.");
+            Broadcast.postUi(new ProcessFinishedEvent(FinishMode.Interrupted, "Cancelled.", null));
+        } else {
+            Broadcast.postUi(new ProcessFinishedEvent(FinishMode.Interrupted, "Nothing to stop.", null));
         }
-    }
-
-    private void log(String s) {
-        if (logDisplay != null) {
-            logDisplay.logMessage(s);
-        } else
-            Log.i(TAG, s);
     }
 }

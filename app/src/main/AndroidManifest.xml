@@ -3,6 +3,7 @@
           xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-feature android:name="android.hardware.camera"/>
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -24,6 +25,4 @@
             android:name="io.fabric.ApiKey"
             android:value="a286b1c471a3f893c3dd2e05193f7ef876f61f9e" />
     </application>
-
-    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

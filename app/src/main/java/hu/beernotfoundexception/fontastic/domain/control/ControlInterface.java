@@ -1,29 +1,16 @@
 package hu.beernotfoundexception.fontastic.domain.control;
 
 import android.graphics.Bitmap;
-import android.support.annotation.Nullable;
 
-import hu.beernotfoundexception.fontastic.domain.presenter.LogDisplay;
 import hu.beernotfoundexception.fontastic.domain.repository.CommunicationInterface;
 
 public interface ControlInterface {
 
-    void onBitmapScanRequest(Bitmap img);
+    void scanBitmap(Bitmap img);
 
-    void onTestRequest(String ip, @Nullable TestProgressListener listener);
+    void startTest(String ip);
 
-    void cancelTest();
-
-    void setLogDisplay(LogDisplay display);
+    void cancelPending();
 
     void setCommunicationInterface(CommunicationInterface communicationInterface);
-
-    public interface TestProgressListener {
-        void onStart();
-
-        void onProgress(float p);
-
-        void onFinish();
-    }
-
 }

@@ -16,16 +16,16 @@ public class TcpClient {
     private final String remoteIp;
     private final int remotePort;
 
-    private final OnMessageReceivedListener mMessageListener;
+    private final CommunicationListener communicationListener;
     private boolean mRun = false;
 
     private PrintWriter out = null;
     private BufferedReader in = null;
 
-    public TcpClient(String remoteIp, int remotePort, OnMessageReceivedListener messageListener) {
+    public TcpClient(String remoteIp, int remotePort, CommunicationListener communicationListener) {
         this.remoteIp = remoteIp;
         this.remotePort = remotePort;
-        mMessageListener = messageListener;
+        this.communicationListener = communicationListener;
     }
 
     public String getRemoteIp() {
@@ -69,17 +69,22 @@ public class TcpClient {
                 while (mRun) {
                     String serverMessage = in.readLine();
 
-                    if (serverMessage != null && mMessageListener != null) {
-                        mMessageListener.messageReceived(serverMessage);
+                    if (serverMessage != null && communicationListener != null) {
+                        communicationListener.messageReceived(serverMessage);
                         Logger.i(TAG, "Incoming: '" + serverMessage + "'");
                     }
                 }
             } catch (Exception e) {
                 Logger.e(TAG, "Error!", e);
-                e.printStackTrace();
+                if (communicationListener != null) {
+                    communicationListener.onCommunicationError(e, true);
+                }
             }
         } catch (Exception e) {
             Logger.e(TAG, "SI: Error", e);
+            if (communicationListener != null) {
+                communicationListener.onCommunicationError(e, true);
+            }
         }
 
     }
@@ -87,21 +92,24 @@ public class TcpClient {
     //Interfész.
     //A messageReceived(String message) metódust implementálni kell
     //az asynckTasknál a doInBackground részben.
-    public interface OnMessageReceivedListener {
+    public interface CommunicationListener {
+
         void messageReceived(String message);
+
+        void onCommunicationError(Exception e, boolean isCritical);
     }
 
     public static class Builder {
         private String remoteIp;
         private int remotePort;
-        private OnMessageReceivedListener messageListener;
+        private CommunicationListener messageListener;
 
         public Builder(String ip, int port) {
             this.remoteIp = ip;
             this.remotePort = port;
         }
 
-        public Builder setMessageListener(OnMessageReceivedListener listener) {
+        public Builder setMessageListener(CommunicationListener listener) {
             this.messageListener = listener;
             return this;
         }

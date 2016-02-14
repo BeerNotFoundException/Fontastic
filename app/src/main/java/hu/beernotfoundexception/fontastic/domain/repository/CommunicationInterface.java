@@ -6,18 +6,19 @@ public interface CommunicationInterface {
 
     void stop();
 
-    void setMessageReceivedListener(OnMessageReceivedListener listener);
+    void setConnectionEventListener(ConnectionEventListener listener);
 
     void sendMessage(String msg);
 
-    void setExpectingDataStream(String startMark, String endMark);
+    void notifyExpectByteArray();
 
-    boolean isIncomingDataStream();
-
-
-    interface OnMessageReceivedListener {
+    interface ConnectionEventListener {
         void onMessage(String msg);
 
         void onByteArray(byte[] bytes);
+
+        void onException(Exception e, boolean isCritical);
+
+        void onDestroy();
     }
 }

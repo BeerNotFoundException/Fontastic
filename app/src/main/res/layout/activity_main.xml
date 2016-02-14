@@ -33,14 +33,15 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
-        app:arcColor="#00ffff"
-        app:arcWidth="2dp"
-        >
+        app:reusable="true"
+        app:arcWidth="2dp">
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        app:elevation="6dp"
+        app:borderWidth="0dp"
         android:src="@android:drawable/ic_menu_camera"/>
 
     </com.github.jorgecastilloprz.FABProgressCircle>

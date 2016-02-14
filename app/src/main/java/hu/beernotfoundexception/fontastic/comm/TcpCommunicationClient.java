@@ -11,19 +11,18 @@ public class TcpCommunicationClient implements CommunicationInterface {
     public static final String TAG = TcpCommunicationClient.class.getSimpleName();
 
     public ConnectTask conctTask = null;
-    OnMessageReceivedListener receivedListener;
+    ConnectionEventListener mConnectionEventListener;
     private TcpClient tcpClient = null;
     private String remoteIp;
     private boolean isIncomingDataStream = false;
-    private DataStreamEnclosing mDataStreamEnclosing;
 
     public TcpCommunicationClient(String remoteIp) {
-        conctTask = new ConnectTask();
         this.remoteIp = remoteIp;
     }
 
     @Override
     public void start() {
+        conctTask = new ConnectTask();
         conctTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
     }
 
@@ -44,8 +43,13 @@ public class TcpCommunicationClient implements CommunicationInterface {
         try {
             Logger.i(TAG, "Destroying");
             tcpClient.stopClient();
-            conctTask.cancel(true);
-            conctTask = null;
+            if (conctTask != null) {
+                conctTask.cancel(true);
+                conctTask = null;
+            }
+            if (mConnectionEventListener != null) {
+                mConnectionEventListener.onDestroy();
+            }
         } catch (Exception e) {
             Logger.e(TAG, "Destroy", e);
         }
@@ -53,42 +57,38 @@ public class TcpCommunicationClient implements CommunicationInterface {
 
     private void handleMessage(String message) {
         if (isIncomingDataStream) {
-            handleByte(message.getBytes()[0]);
+            handleBytes(message);
         } else {
-            receivedListener.onMessage(message);
+            if (message.contains("CRITICAL")) {
+                mConnectionEventListener.onException(
+                        new Exception(message),
+                        !message.startsWith("NON-"));
+            } else
+                mConnectionEventListener.onMessage(message);
         }
     }
 
-    private void handleByte(byte b) {
-        Logger.i(TAG, "Handling byte: " + b);
-        if (!mDataStreamEnclosing.isDataFinished(b))
-            mDataStreamEnclosing.addByte(b);
-        else
-            receivedListener.onByteArray(mDataStreamEnclosing.byteOutputStream.toByteArray());
+    private void handleBytes(String byteString) {
+        isIncomingDataStream = false;
+        Logger.i(TAG, "Handling bytes, length " + byteString.length());
+        mConnectionEventListener.onByteArray(DataStreamDecoder.trimToData(byteString));
     }
 
     @Override
-    public void setMessageReceivedListener(OnMessageReceivedListener listener) {
-        receivedListener = listener;
+    public void setConnectionEventListener(ConnectionEventListener listener) {
+        mConnectionEventListener = listener;
     }
 
-    @Override
-    public boolean isIncomingDataStream() {
-        return false;
-    }
-
-    @Override
-    public void setExpectingDataStream(String startMark, String endMark) {
+    public void notifyExpectByteArray() {
         isIncomingDataStream = true;
-        mDataStreamEnclosing = new DataStreamEnclosing(startMark, endMark);
     }
 
-    public class ConnectTask extends AsyncTask<String, String, Void> {
+    public class ConnectTask extends AsyncTask<Void, String, Void> {
 
         @Override
-        protected Void doInBackground(String... message) {
+        protected Void doInBackground(Void... params) {
             TcpClient.Builder tcpBuilder = new TcpClient.Builder(remoteIp, Constants.REMOTE_PORT)
-                    .setMessageListener(new TcpClient.OnMessageReceivedListener() {
+                    .setMessageListener(new TcpClient.CommunicationListener() {
                         @Override
                         public void messageReceived(String message) {
                             try {
@@ -97,8 +97,16 @@ public class TcpCommunicationClient implements CommunicationInterface {
                                     Logger.i(TAG, tcpClient.getRemoteIp() + " incoming: " + message);
                                 }
                             } catch (Exception e) {
-                                Logger.e(TAG, "Rcv error", e);
+                                Logger.e(TAG, "Receive error", e);
+                                mConnectionEventListener.onException(e, false);
                             }
+                        }
+
+                        @Override
+                        public void onCommunicationError(Exception e, boolean isCritical) {
+                            publishProgress((isCritical ? "" : "NON-")
+                                    + "CRITICAL communication error: "
+                                    + e.getMessage());
                         }
                     });
 

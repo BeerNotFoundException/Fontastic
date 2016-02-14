@@ -41,6 +41,7 @@ public class Logger {
     }
 
     public static void e(final String tag, final String message, final Throwable e) {
+        e.printStackTrace();
         if (logLevel > 1 && logDisplay != null) {
                     logDisplay.logMessage("EXCEPTION");
                     logDisplay.logMessage(tag + " - " + message);

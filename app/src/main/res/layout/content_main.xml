@@ -6,13 +6,13 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/colorPrimaryDark"
-    android:paddingBottom="@dimen/activity_vertical_margin"
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context="hu.beernotfoundexception.fontastic.MainActivity"
-    tools:showIn="@layout/activity_main">
+    tools:showIn="@layout/activity_main"
+    android:id="@+id/relContainer">
 
     <TextView
         android:id="@+id/textView"
@@ -20,48 +20,52 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="20dp"
-        android:layout_marginTop="20dp"
-        android:text="@string/txtHelpText"
-        android:gravity="center"/>
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="12dp"
+        android:gravity="center"
+        android:text="@string/txtHelpText"/>
 
-    <com.github.florent37.materialtextfield.MaterialTextField
-        android:id="@+id/view"
-        android:layout_width="300dp"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/textView"
-        android:layout_centerHorizontal="true"
-        android:layout_marginBottom="15dp"
-        app:mtf_image="@android:drawable/ic_dialog_map">
-
-        <EditText
-            android:id="@+id/txtIp"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:digits="0123456789."
-            android:hint="@string/txt_hint_ip"
-            android:inputType="number|numberDecimal"
-            android:textColor="#333"
-            android:textColorHint="#666"
-            android:textSize="15sp"/>
-
-    </com.github.florent37.materialtextfield.MaterialTextField>
-
-    <ImageView
-        android:id="@+id/imgPreview"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:layout_below="@+id/view"
-        android:layout_centerHorizontal="true"
-        android:contentDescription="@string/txt_img_desc_realtime"
-        android:layout_marginBottom="15dp"/>
-
-    <ListView
-        android:id="@+id/listConsole"
+    <com.rengwuxian.materialedittext.MaterialEditText
+        android:id="@+id/txtIp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        tools:listitem="@android:layout/simple_list_item_1"
-        android:layout_below="@+id/imgPreview"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:digits="0123456789."
+        android:hint="@string/txt_hint_ip"
+        android:inputType="number|numberDecimal"
+        android:textSize="25sp"
+        android:gravity="center"
+        app:met_floatingLabel="highlight"
+        app:met_singleLineEllipsis="false"
+        app:met_baseColor="#9e9e9e"
+        app:met_primaryColor="@color/colorAccent"
+        app:met_errorColor="#d50000"
+        app:met_textColor="@color/colorText"
+        app:met_textColorHint="@color/colorTextHint"
+        android:layout_below="@+id/textView"
         android:layout_centerHorizontal="true"/>
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/recConsole"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:layoutManager="LinearLayoutManager"
+        tools:listitem="@layout/card_console_text"
+        android:layout_below="@+id/btnClear"
+        android:layout_alignParentEnd="true"/>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="26dp"
+        android:text="Clear console"
+        android:id="@+id/btnClear"
+        android:layout_below="@+id/txtIp"
+        android:layout_centerHorizontal="true"
+        android:textColor="@color/colorText"
+        android:background="@color/colorAccent"
+        android:layout_marginRight="6dp"
+        android:layout_marginLeft="6dp"
+        android:layout_marginBottom="6dp"/>
 
 </RelativeLayout>

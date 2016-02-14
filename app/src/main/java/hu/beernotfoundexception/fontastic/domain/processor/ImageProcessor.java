@@ -1,6 +1,7 @@
 package hu.beernotfoundexception.fontastic.domain.processor;
 
 import android.graphics.Bitmap;
+import android.support.annotation.NonNull;
 
 /**
  * The image processor interface.
@@ -10,7 +11,7 @@ public interface ImageProcessor {
     /**
      * The interface Image processing callback.
      */
-    interface ImageProcessingCallback {
+    interface ImageProcessingListener {
 
         /**
          * On start.
@@ -43,8 +44,8 @@ public interface ImageProcessor {
     /**
      * Process image.
      *
-     * @param image    the image
-     * @param callback the callback
+     * @param image    the input
+     * @param listener the listener, does not need to run on UI
      */
-    void processImage(Bitmap image, ImageProcessingCallback callback);
+    void processImage(@NonNull Bitmap image, @NonNull ImageProcessingListener listener);
 }
