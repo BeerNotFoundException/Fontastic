@@ -61,7 +61,7 @@ import static hu.beernotfoundexception.fontastic.data.ConsoleLine.TYPE_STRING;
 
 public class MainActivity extends ControlDisplayActivity {
 
-    private static final int REQUEST_CAMERA_PERMISSION = 838;
+    private static final int REQUEST_CAMERA_PERMISSION = 102;
     private static final int REQUEST_IMAGE_CAPTURE = 236;
     @Bind(R.id.txtIp)
     protected MaterialEditText txtIpEdit;

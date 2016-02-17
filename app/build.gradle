@@ -53,6 +53,8 @@ dependencies {
 
     compile 'com.rmtheis:tess-two:5.4.1'
 
+    compile group: 'com.asprise.ocr', name: 'java-ocr-api', version: '[15,)'
+
     compile('com.crashlytics.sdk.android:crashlytics:2.5.5@aar') {
         transitive = true;
     }
